@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pandas as pd
 import regex
-from unidecode import unidecode
 
 _cwd = Path(__file__).resolve().parent
 
@@ -41,6 +40,10 @@ def is_valid_dni(dni: str, verbose: bool = False):
             print("Error: wrong first digit.")
         return False
     # Check digits are digit
+    if not (len(digits)==7 or len(digits)==8):
+        if verbose:
+            print("Error: not valid sequence of numbers.")
+        return False
     if not regex.match(rf"\d{{{len(digits)}}}", digits):
         if verbose:
             print("Error: not valid sequence of numbers.")
@@ -183,7 +186,7 @@ def validate_nif(nif: str):
     """
     Obtain the NIF in a valid format, else None.
     """
-    nif = regex.sub(r"\W", "", nif)
+    nif = regex.sub(r"\W", "", nif.lower())
     if is_valid_nif(nif):
         return nif
     return None
