@@ -48,6 +48,11 @@ def is_valid_dni(dni: str, verbose: bool = False):
         if verbose:
             print("Error: not valid sequence of numbers.")
         return False
+    # Check all digits are different from 0
+    if not int(digits):
+        if verbose:
+            print("Error: invalid sequence of numbers.")
+        return False
     # Check letter is valid
     if not control in secuenciaLetrasNIF:
         if verbose:
@@ -84,6 +89,11 @@ def is_valid_nie(nie: str, verbose: bool = False):
         if verbose:
             print("Error: invalid sequence of numbers.")
         return False
+    # Check all digits are different from 0
+    if not int(digits):
+        if verbose:
+            print("Error: invalid sequence of numbers.")
+        return False
     # Check letter is valid
     if not control in secuenciaLetrasNIF:
         if verbose:
@@ -114,6 +124,11 @@ def is_valid_cif(cif: str, verbose: bool = False):
     if not regex.match(r"\d{7}", digits):
         if verbose:
             print("Error: not valid sequence of numbers.")
+        return False
+    # Check all digits are different from 0
+    if not int(digits):
+        if verbose:
+            print("Error: invalid sequence of numbers.")
         return False
     # Check the letter
     if not letter in let2tipo:
