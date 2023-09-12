@@ -10,10 +10,12 @@ dig_control_num = "JABCDEFGHI".lower()
 secuenciaLetrasNIF = "TRWAGMYFPDXBNJZSQVHLCKE".lower()
 identificadoresDNI = "KLM".lower()
 identificadoresNIE = "XYZ".lower()
+idNIE2letter = {l: str(n) for n, l in enumerate(identificadoresNIE)}
 
 # Load entity identifiers
 id_entidades = pd.read_csv(_cwd.joinpath("data/identificador_entidades.csv"), sep=";")
-let2tipo = dict(id_entidades[["letra", "desc"]].values)
+let2desc = dict(id_entidades[["letra", "desc"]].values)
+let2tipo = dict(id_entidades[["letra", "tipo"]].values)
 
 # Load province identifiers
 id_provincia = pd.read_csv(_cwd.joinpath("data/identificador_provincia.csv"), sep=";")
@@ -84,8 +86,10 @@ def is_valid_nie(nie: str, verbose: bool = False):
         if verbose:
             print("Error: invalid letter.")
         return False
+    else:
+        digits = idNIE2letter.get(letter, "") + digits
     # Check digits are digit
-    if not regex.match(r"\d{7}", digits):
+    if not regex.match(r"\d{8}", digits):
         if verbose:
             print("Error: invalid sequence of numbers.")
         return False
@@ -213,7 +217,8 @@ def get_info_from_cif(cif: str, verbose: bool = False):
     """
     cif = regex.sub(r"\W", "", cif.lower())
     if not is_valid_cif(cif, verbose):
-        return (None, None)
+        return (None, None, None)
     prov = dig2prov.get(cif[1:3])
     tipo = let2tipo.get(cif[0])
-    return (prov, tipo)
+    desc = let2desc.get(cif[0])
+    return (prov, tipo, desc)
