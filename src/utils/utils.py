@@ -13,6 +13,10 @@ def fill_to_length(iterable, l):
     return iterable + [None] * (l - len(iterable))
 
 
+def unify_colname(col):
+    return ".".join([el for el in col if el])
+
+
 def suggest_value(elements):
     """
     Select elements based on appearance.
