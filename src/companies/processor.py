@@ -4,10 +4,11 @@ from unidecode import unidecode
 from .utils import replace_company_types
 
 
-def clean_text(text):
+def clean_text(text: str):
     """
     Clean text to remove extra characters, spaces, etc.
     """
+    text = text.lower()
     # remove special chars
     text = regex.sub(r"\p{P}(?<![,.-])", " ", text).replace("-", " - ")
     # strip chars
@@ -25,6 +26,7 @@ def clean_company_type(company_name: str, remove_type: bool = False):
     """
     if not company_name:
         return None
+    company_name = company_name.lower()
     company_name = replace_company_types(company_name, remove_type=remove_type)
     # company_name = regex.sub(r"[\s]+", " ", company_name)
     # company_name = company_name.strip("-, ")
@@ -38,6 +40,7 @@ def normalize_company_name(company_name: str):
     """
     if not company_name:
         return None
+    company_name = company_name.lower()
     company_name = unidecode(company_name)
     company_name = regex.sub(r"\W", "", company_name)
     company_name = company_name.strip()

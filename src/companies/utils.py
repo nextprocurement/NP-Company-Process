@@ -39,7 +39,7 @@ soc_merc = {
 }
 
 
-def replace_company_types(text, remove_type=False):
+def replace_company_types(text: str, remove_type=False):
     """
     Replace the company type if present in a text in any given format
     (e.g.: "s.l.", "sl", "s. l.") into a standard form ("s.l.")
