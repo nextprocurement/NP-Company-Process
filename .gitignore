@@ -3,5 +3,5 @@
 .vscode
 
 # ignore directories
-data/
+/data/
 __pycache__/

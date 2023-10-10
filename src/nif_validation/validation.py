@@ -152,23 +152,28 @@ def is_valid_cif(cif: str):
     return True
 
 
-def handle_error(nif, error_code: int, verbose: bool = False):
+def handle_error(nif: str, error_code: int, nif_type: str, verbose: bool = False):
     """
     Handle the error by printing the corresponding error message.
     """
+    # TODO: error correction
     error_messages = {
-        ERROR_LENGTH: "Error: wrong length.",
-        ERROR_FIRST_DIGIT: "Error: wrong first digit.",
-        ERROR_DIGIT_SEQUENCE: "Error: invalid sequence of numbers.",
-        ERROR_CONTROL_DIGIT: "Error: wrong control digit.",
-        ERROR_PROVINCE_CODE: "Error: wrong province code.",
+        ERROR_LENGTH: f"Error in {nif_type}: wrong length.",
+        ERROR_FIRST_DIGIT: f"Error in {nif_type}: wrong first digit.",
+        ERROR_DIGIT_SEQUENCE: f"Error in {nif_type}: invalid sequence of numbers.",
+        ERROR_CONTROL_DIGIT: f"Error in {nif_type}: wrong control digit.",
+        ERROR_PROVINCE_CODE: f"Error in {nif_type}: wrong province code.",
     }
 
     # Print the error message corresponding to the error code
     if verbose:
         print(error_messages.get(error_code, "Unknown error."))
     if ERROR_LENGTH:
-        nif = "0" + nif
+        # Add 0 as first digit
+        if nif[0].isalpha():
+            nif = nif[0] + "0" + nif[1:]
+        else:
+            nif = "0" + nif
         return nif
     elif ERROR_FIRST_DIGIT:
         return None
@@ -199,6 +204,8 @@ def is_valid_nif(nif: str):
     """
     Check whether the NIF (CIF, DNI or NIE) is valid.
     """
+    if not nif:
+        return False
     nif = regex.sub(r"\W", "", nif.lower())
     if get_nif_type(nif):
         return True
@@ -221,6 +228,8 @@ def validate_nif(nif: str, correct=False, verbose=False):
     If it is wrong and correct is `False`, return None.
     Else try to correct.
     """
+    if not nif:
+        return None
     nif = regex.sub(r"\W", "", nif.lower())
 
     # First check if NIF is valid
@@ -234,7 +243,8 @@ def validate_nif(nif: str, correct=False, verbose=False):
         # Check every posibility
         for val in [is_valid_cif, is_valid_dni, is_valid_nie]:
             result = val(nif)
-            corrected = handle_error(nif, result, verbose)
+            nif_type = val.__name__[-3:]
+            corrected = handle_error(nif, result, nif_type, verbose)
             if corrected and val(corrected) > 0:
                 return corrected
         return None
@@ -244,6 +254,8 @@ def get_info_from_cif(cif: str):
     """
     Returns province and company type given a valid CIF.
     """
+    if not cif:
+        return (None, None, None)
     cif = regex.sub(r"\W", "", cif.lower())
     if is_valid_cif(cif) < 0:
         return (None, None, None)
