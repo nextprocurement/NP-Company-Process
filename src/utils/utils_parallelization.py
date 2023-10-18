@@ -16,19 +16,31 @@ def parallelize_function(
     *args,
     **kwargs,
 ):
-    results = Parallel(
-        n_jobs=workers,
-        prefer=prefer,
-        verbose=0,
-        # backend="threading", # loky, multiprocessing, threading
-        # return_as="generator", # list
-        # timeout=None,
-        # pre_dispatch="2 * n_jobs",
-        batch_size="auto",
-        # max_nbytes="1M",
-        # mmap_mode="r",
-        # require=None,
-    )(delayed(func)(x, *args, **kwargs) for x in data)
+    """
+    Parallelizes function execution
+
+    Parameters:
+    -----------
+    func:
+        Function to be parallelized
+    data:
+        Data to be processed
+    workers:
+        Number of worker processes
+    prefer:
+        Preferred backend for parallelization ("processes" or "threads")
+    output:
+        Type of output ("series" or "list")
+    args, kwargs:
+        Additional arguments for the function
+
+    Returns:
+    --------
+    Processed results as a Pandas Series or List
+    """
+    results = Parallel(n_jobs=workers, prefer=prefer, verbose=0)(
+        delayed(func)(x, *args, **kwargs) for x in data
+    )
     results = list(results)
     if output == "series" and isinstance(data, pd.Series):
         return pd.Series(results, index=data.index)
@@ -40,8 +52,14 @@ def tqdm_joblib(tqdm_object):
     """Context manager to patch joblib to report into tqdm progress bar given as argument"""
 
     class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._tqdm_object = tqdm_object
+
         def __call__(self, *args, **kwargs):
-            tqdm_object.update(n=self.batch_size)
+            # Check if the callback has `batch_size` attribute
+            if hasattr(self, "batch_size"):
+                self._tqdm_object.update(n=self.batch_size)
             return super().__call__(*args, **kwargs)
 
     old_batch_callback = joblib.parallel.BatchCompletionCallBack
@@ -56,11 +74,10 @@ def tqdm_joblib(tqdm_object):
 def parallelize_function_with_progress_bar(
     func,
     data: Union[pd.Series, List],
-    batch_size: int,
-    desc: str = "",
     workers=-1,
     prefer="processes",
     output: str = "series",
+    desc: str = "",
     *args,
     **kwargs,
 ):
@@ -73,16 +90,14 @@ def parallelize_function_with_progress_bar(
         Function to be parallelized
     data:
         Data to be processed
-    batch_size:
-        Size of each batch of data
-    desc:
-        Description for the progress bar
     workers:
         Number of worker processes
     prefer:
         Preferred backend for parallelization
     output:
-        Type of output ('series' or 'list')
+        Type of output ("series" or "list")
+    desc:
+        Description for the progress bar
     args, kwargs:
         Additional arguments for the function
 
@@ -91,14 +106,15 @@ def parallelize_function_with_progress_bar(
     Processed results as a Pandas Series or List
     """
 
-    num_batches = len(data) // batch_size + (len(data) % batch_size != 0)
-
-    with tqdm_joblib(tqdm(desc=desc, total=num_batches)) as progress_bar:
-        results = Parallel(n_jobs=workers, prefer=prefer, verbose=0, batch_size="auto")(
-            delayed(func)(data[i * batch_size : (i + 1) * batch_size], *args, **kwargs)
-            for i in range(num_batches)
+    with tqdm_joblib(tqdm(desc=desc, total=len(data), leave=False)) as progress_bar:
+        results = parallelize_function(
+            func,
+            data,
+            workers=workers,
+            prefer=prefer,
+            *args,
+            **kwargs,
         )
-    results = list(results)
     if output == "series" and isinstance(data, pd.Series):
         return pd.Series(results, index=data.index)
     return results
