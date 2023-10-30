@@ -46,7 +46,7 @@ This notebook matches tenders from PLACE and GENCAT, in this case. The step-by-s
 7. Combine both dataframes obtaining a counter of the remaining elements. Later on, this counter will be used to obtain the most probable data.
 8. From this point, you can search in one dataframe or another, fill in data, etc.
 
-### test_company_proc.ipynb
+### match_companies.ipynb
 This notebook matches companies. The step-by-step of the notebook is as follows:
 1. Imports and functions to separate the NIF when included in the text and to clean the dataframe.
 2. Combine the different sources (minors, insiders, outsiders)

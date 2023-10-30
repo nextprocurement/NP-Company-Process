@@ -46,7 +46,7 @@ Este notebook hace un emparejamiento entre las licitaciones de PLACE y las de GE
 7. Unificar ambos dataframes obteniendo un contador del resto de elementos. Más adelante, este contador servirá para obtener los datos más probables.
 8. A partir de ahí ya se pueden hacer búsquedas en un dataframe u otro, rellenar datos, etc.
 
-### test_company_proc.ipynb
+### match_companies.ipynb
 Este notebook hace un emparejamiento entre empresas. El paso a paso del notebook es el siguiente:
 1. Imports y funciones para separar el NIF cuando va incluido en el texto y para limpiar el dataframe.
 2. Juntar las distintas fuentes (minors, insiders, outsiders)
