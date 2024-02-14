@@ -5,3 +5,8 @@
 # ignore directories
 /data/
 __pycache__/
+
+# data directories
+data
+
+.ipynb_checkpoints
