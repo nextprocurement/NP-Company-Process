@@ -3,8 +3,9 @@ import pathlib
 from tabulate import tabulate
 
 
-path_found_method1 = pathlib.Path("../data/df_not_in_utes_enriched1.parquet")
-path_found_method2 = pathlib.Path("../data/utes_spark.parquet")
+#path_found_method1 = pathlib.Path("../data/df_not_in_utes_enriched1.parquet")
+path_found_method1 = pathlib.Path("../data/utes_spark.parquet")
+path_found_method2 = pathlib.Path("../data/utes_spark2.parquet")
 path_utes = pathlib.Path("../data/utes.parquet")
 
 df_not_in_utes_method1 = pd.read_parquet(path_found_method1)
