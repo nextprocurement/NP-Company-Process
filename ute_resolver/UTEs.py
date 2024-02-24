@@ -83,31 +83,59 @@ def encontrar_substring_similar(main_string, substring, seps, threshold=90):
 
 
 def encontrar_substring_similar(main_string, substring, substring_splits, threshold=90):
-    len_substring = len(substring)
-    len_main_string = len(main_string)
+    # main_string = ute
+    # substring = company_name
+    # substring_splits = company_name splits
+
+    # len_substring = len(substring)
+    # len_main_string = len(main_string)
 
     # Calculate similarity only if the length of the substring is less than the main string
-    if len_substring <= len_main_string:
-        # Use a sliding window approach to compare substrings
-        for i in range(len_main_string - len_substring + 1):
+    # if len_substring <= len_main_string:
+    #    # Use a sliding window approach to compare substrings
+    #    for i in range(len_main_string - len_substring + 1):
+    #        sub = main_string[i:i + len_substring]
+    #        similarity = fuzz.ratio(sub, substring)
+    #        if similarity >= threshold:
+    #            return True
+
+    regex_pattern = r'\b' + re.escape(substring) + r'\b'
+    regex = re.compile(regex_pattern)
+
+    len_substring = len(substring)
+    for match in regex.finditer(main_string):
+        start_index = match.start()
+        end_index = match.end()
+
+        # Calculate similarity only for substrings around the match
+        for i in range(start_index, end_index - len_substring + 1):
             sub = main_string[i:i + len_substring]
-            similarity = fuzz.ratio(sub, substring)
-            if similarity >= threshold:
+            similitud = fuzz.ratio(sub, substring)
+            if similitud >= threshold:
                 return True
 
     # Check for partial matches with some punctuation separation
-    return any(split in [word.strip(',').strip().strip(")").strip("(")
-                         for word in substring.lower().split()]
-               for split in substring_splits
-               if len(substring_splits) > 1)
+    if re.search(r'[.,!?;:\s-]', main_string):
+        main_string_split = set(
+            re.split(r'([.,!?;:\s-])', main_string.lower()))
+        # if any(len(split) > 3 and split in main_string_split for split in substring_splits):
+        substring_set = set(substring_splits)
+
+        if len(main_string_split.intersection(substring_set)) >= 1:
+            return True
 
 
 def get_splits(name):
     if re_pattern.search(name):
         name_parts = re_pattern.split(name.lower())
         # Remove empty strings, separators, and duplicates
-        name_parts = [part.strip(',').strip() for part in name_parts
-                      if part.strip() and part not in SEPS and part not in UNIQUE_NAMES_APELLIDOS]
+        name_parts = [part.strip(',').strip()
+                      for part in name_parts
+                      if part.strip()
+                      and len(part) > 3
+                      and not part.isdigit()
+                      and not part in SEPS
+                      and not part in (UNIQUE_NAMES_APELLIDOS + COMMON_SPANISH + COMMON_CATALAN)]
         return name_parts if len(name_parts) > 0 else []
     return []
 
@@ -145,10 +173,11 @@ if __name__ == "__main__":
     df_company = pd.read_parquet(path_companies)
     SEPS_UTES = (df_company.CompanyType.unique().tolist() +
                  ["s.l.p.", "s.l.p", "s.l.l.", "s.a.u.", "s.l.u.", "s.l.u", "s.l.u,", "slu", "s.l", "c.o.o.p.", "s.a", "sl.", "sccl", "s.coop.pequeña"] +
-                 ["sl", "slu", "s."])[1:]
+                 ["sl", "slu", "s.", "scclp"])[1:]
 
     OTHERS = ["UTE", "ute", "u.t.e.", "servicio", "servicios", "obras",
-              "fundación", "información", "técnica", "proyectos", "y"] + ["-", "_", ",", "+"]
+              "fundación", "información", "técnica", "proyectos", "y",
+              "engineering", "architecture", "technology", "solutions", "infraestructuras", "inst", "contrucciones", "construccions", "office", "spain", "associacio", "formacio", "arquitectes", "gestio", "information", "international", "systems", "system", "excavacions", "facility", "partners", "consulting", "catalunya", "constr", "projects", "intelligence", "educatio", "systems", "electrodomesticos", "marketing", "extremadura", "networks", "estacionamientos", "management", "gipuzkoa", "coslada", "security", "project", "design", "studio", "security", "service", "avda", "serv", "trans", "quality", "group", "services", "asturias", "manteniments", "investment", "quality", "cantabria", "medioambientales", "sist", "energy", "rehabilitaciones", "bizkaia", "research", "enginyeria", "electronics", "solucions", "facilities", "music", "technologies"] + ["-", "_", ",", "+", ".", ".,"]
     SEPS = SEPS_UTES + OTHERS
 
     if spark:
@@ -164,33 +193,29 @@ if __name__ == "__main__":
 
         # GLOBAL VARIABLES
         re_pattern = re.compile(r'([.,!?;:\s-])')
-        TRANS_TABLE = str.maketrans('áéíóúÁÉÍÓÚ', 'aeiouAEIOU')
+        TRANS_TABLE = str.maketrans('áéíóúÁÉÍÓÚòÒ', 'aeiouAEIOUoO')
 
         ########################################################################
         # Read data as pyarrow dataframes, normalize to remove punctuation, create 'df_not_in_utes' and a list with the UTE's unique names
         ########################################################################
-        df_company = spark.read.parquet(f"file://{path_companies}")
-        df_utes = spark.read.parquet(f"file://{path_utes}")
+        # Read data
+        df_company = spark.read.parquet(
+            f"file://{path_companies}")  # .sample(withReplacement=False, fraction=0.1, seed=42)
+        df_utes = spark.read.parquet(
+            f"file://{path_utes}")  # .sample(withReplacement=False, fraction=0.1, seed=42)
+
+        # Create a new dataframe with all the company names that are not in the utes
+        full_names_utes = df_utes.select(
+            'FullName').rdd.flatMap(lambda x: x).collect()
+        df_not_in_utes = df_company.filter(
+            ~col('FullName').isin(full_names_utes))
 
         # Normalize to remove punctuation
         remove_punctuation_udf = udf(remove_punctuation, StringType())
-        df_company = df_company.withColumn(
+        df_not_in_utes = df_not_in_utes.withColumn(
             "Name_norm", remove_punctuation_udf("Name"))
         df_utes = df_utes.withColumn(
             "FullName_norm", remove_punctuation_udf("FullName"))
-
-        # Create a dataframe with the companies that are not utes
-        full_names_utes = df_utes.select(
-            'FullName_norm').rdd.flatMap(lambda x: x).collect()
-        df_not_in_utes = df_company.filter(
-            ~col('Name_norm').isin(full_names_utes))
-
-        # Extract the distinct FullName_norm values from df_utes and collect them as a list.
-        unique_names = df_utes.select(
-            'FullName_norm').distinct().rdd.flatMap(lambda x: x).collect()
-
-        # Broadcast the list of unique names
-        broadcast_unique_names = spark.sparkContext.broadcast(unique_names)
 
         ########################################################################
         # Create lists of common names/last names in Spain and broadcast them
@@ -221,23 +246,38 @@ if __name__ == "__main__":
         UNIQUE_NAMES_APELLIDOS = list(set(unique_names + unique_apellidos))
         UNIQUE_NAMES_APELLIDOS.sort()
 
+        ########################################################################
+        # Create list of common spanish words
+        ########################################################################
+        with open(path_data.joinpath("es.txt")) as file:
+            COMMON_SPANISH = file.readlines()
+            COMMON_SPANISH = [line.rstrip() for line in COMMON_SPANISH]
+        with open(path_data.joinpath("catalan.txt")) as file:
+            COMMON_CATALAN = file.readlines()
+            COMMON_CATALAN = [line.rstrip() for line in COMMON_CATALAN]
+
         # UDF to split the names and apply UDF to DataFrame
         split_udf = udf(get_splits, ArrayType(StringType()))
         df_not_in_utes = df_not_in_utes.withColumn(
             "splits", split_udf("Name_norm"))
 
+        # Extract the distinct FullName_norm values from df_utes, collect them as a list and broadcast
+        unique_names = df_utes.select(
+            'FullName_norm').distinct().rdd.flatMap(lambda x: x).collect()
+        broadcast_unique_names = spark.sparkContext.broadcast(unique_names)
+
         # UDF that iterates over the broadcasted list of unique names and finds matches for each name in df_not_in_utes.
         @udf(returnType=ArrayType(StringType()))
-        def get_company_utes(name):
-            return [fullName for fullName in broadcast_unique_names.value if encontrar_substring_similar(fullName, name, SEPS)]
-
+        def get_company_utes(name, splits):
+            return [fullName for fullName in broadcast_unique_names.value if encontrar_substring_similar(fullName, name, splits)]
+        # si encontramos el nombre de la empresa (name) en el ute (fullName)
         # Use the UDF to add a new column to df_not_in_utes
         df_not_in_utes = df_not_in_utes.withColumn(
-            "utes", get_company_utes("Name_norm"))
+            "utes", get_company_utes("Name_norm", "splits"))
 
         # Save to file
         print("--- Saving of file starts...")
-        path_save = path_data.joinpath("utes_spark3.parquet")
+        path_save = path_data.joinpath("utes_spark4.parquet")
         df_not_in_utes.coalesce(1000).write.parquet(
             f"file://{path_save}", mode="overwrite")
         print("--- Saving of file finished!!...")
