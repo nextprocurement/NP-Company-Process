@@ -135,7 +135,7 @@ def get_splits(name):
                       and len(part) > 3
                       and not part.isdigit()
                       and not part in SEPS
-                      and not part in (UNIQUE_NAMES_APELLIDOS + COMMON_SPANISH + COMMON_CATALAN)]
+                      and not part in (UNIQUE_NAMES_APELLIDOS + COMMON_SPANISH + COMMON_CATALAN + SPLITS_STOPS)]
         return name_parts if len(name_parts) > 0 else []
     return []
 
@@ -175,9 +175,7 @@ if __name__ == "__main__":
                  ["s.l.p.", "s.l.p", "s.l.l.", "s.a.u.", "s.l.u.", "s.l.u", "s.l.u,", "slu", "s.l", "c.o.o.p.", "s.a", "sl.", "sccl", "s.coop.pequeña"] +
                  ["sl", "slu", "s.", "scclp"])[1:]
 
-    OTHERS = ["UTE", "ute", "u.t.e.", "servicio", "servicios", "obras",
-              "fundación", "información", "técnica", "proyectos", "y",
-              "engineering", "architecture", "technology", "solutions", "infraestructuras", "inst", "contrucciones", "construccions", "office", "spain", "associacio", "formacio", "arquitectes", "gestio", "information", "international", "systems", "system", "excavacions", "facility", "partners", "consulting", "catalunya", "constr", "projects", "intelligence", "educatio", "systems", "electrodomesticos", "marketing", "extremadura", "networks", "estacionamientos", "management", "gipuzkoa", "coslada", "security", "project", "design", "studio", "security", "service", "avda", "serv", "trans", "quality", "group", "services", "asturias", "manteniments", "investment", "quality", "cantabria", "medioambientales", "sist", "energy", "rehabilitaciones", "bizkaia", "research", "enginyeria", "electronics", "solucions", "facilities", "music", "technologies"] + ["-", "_", ",", "+", ".", ".,"]
+    OTHERS = ["-", "_", ",", "+", ".", ".,"]
     SEPS = SEPS_UTES + OTHERS
 
     if spark:
@@ -247,7 +245,7 @@ if __name__ == "__main__":
         UNIQUE_NAMES_APELLIDOS.sort()
 
         ########################################################################
-        # Create list of common spanish words
+        # Create list of common spanish and catalan words
         ########################################################################
         with open(path_data.joinpath("es.txt")) as file:
             COMMON_SPANISH = file.readlines()
@@ -255,6 +253,13 @@ if __name__ == "__main__":
         with open(path_data.joinpath("catalan.txt")) as file:
             COMMON_CATALAN = file.readlines()
             COMMON_CATALAN = [line.rstrip() for line in COMMON_CATALAN]
+
+        ########################################################################
+        # We also laod a list of words generated from the "splits" of the company names obtained from a previous execution of this script that have a frequency larger than the 95th percentile of the frequency distribution of the "splits" of the company names
+        ########################################################################
+        with open(path_data.joinpath("filtered_elements.txt")) as file:
+            SPLITS_STOPS = file.readlines()
+            SPLITS_STOPS = [line.rstrip() for line in SPLITS_STOPS]
 
         # UDF to split the names and apply UDF to DataFrame
         split_udf = udf(get_splits, ArrayType(StringType()))
