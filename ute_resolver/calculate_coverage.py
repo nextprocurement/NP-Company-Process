@@ -100,13 +100,14 @@ def main():
         (table_filtered_method2.iloc[i]["Name"], "\n".join(table_filtered_method2.iloc[i]["utes"])) for i in range(args.nshow)
     ]
 
+    """
     print("-- Some examples using method 1:")
     print(tabulate(sample_results_method1, headers=[
         "Company Names", "Utes"], tablefmt="mixed_grid"))
 
     print("*"*100)
     print("*"*100)
-
+    """
     print("-- Some examples using method 2:")
     print(tabulate(sample_results_method2, headers=[
         "Company Names", "Utes"], tablefmt="mixed_grid"))

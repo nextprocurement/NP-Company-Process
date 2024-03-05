@@ -1,0 +1,3 @@
+# Information about ''extracted_companies'' information
+
+The files ``utes_des.parquet`` and ``companies_des.parquet``have been generated based on the information available in ``company_info.parquet`` and ``utes.parquet``. The former contains, for each UTE, the companies composing it. It's important to note that there may be cases of false positives, where companies erroneously appear associated with a UTE, as well as cases where companies are missing (e.g., in a UTE composed of 3 companies, only 2 are listed in the table). False positives are particularly common when a company name is generic (e.g., 'Jose', 'Maria', etc.). The 'companies_des.parquet' table contains, for each company, the UTEs in which the algorithm suggests it has participated.
