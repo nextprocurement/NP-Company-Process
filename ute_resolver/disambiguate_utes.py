@@ -546,7 +546,6 @@ if __name__ == "__main__":
     SEPS = SEPS_UTES + OTHERS
 
     start_time = time.time()
-    print("Start of parallel execution")
 
     if not args.approach or args.approach < 1 or args.approach > 2:
         sys.exit("-- -- The approach must be 1 or 2")

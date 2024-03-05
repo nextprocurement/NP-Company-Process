@@ -41,14 +41,14 @@ def main():
                         help="Path to the data folder.",
                         default="../data")
     parser.add_argument("--compare1", type=str,
-                        help="Name of the first file to compare.", default="utes_spark4.parquet")
+                        help="Name of the first file to compare.", default="df_not_in_utes_approach1.parquet")
     parser.add_argument("--compare2", type=str,
-                        help="Name of the second file to compare", default="utes_spark5.parquet")
+                        help="Name of the second file to compare", default="companies_des.parquet")
     parser.add_argument("--utes", type=str,
                         help="Name of the file with the utes.",
                         default="utes.parquet")
     parser.add_argument("--nshow", type=int,
-                        help="Number of examples to show", default=100)
+                        help="Number of examples to show", default=10)
 
     args = parser.parse_args()
 
@@ -100,14 +100,14 @@ def main():
         (table_filtered_method2.iloc[i]["Name"], "\n".join(table_filtered_method2.iloc[i]["utes"])) for i in range(args.nshow)
     ]
 
-    """
+
     print("-- Some examples using method 1:")
     print(tabulate(sample_results_method1, headers=[
         "Company Names", "Utes"], tablefmt="mixed_grid"))
 
     print("*"*100)
     print("*"*100)
-    """
+
     print("-- Some examples using method 2:")
     print(tabulate(sample_results_method2, headers=[
         "Company Names", "Utes"], tablefmt="mixed_grid"))
