@@ -2,11 +2,12 @@ import json
 import time
 from collections import Counter
 from itertools import chain
-from pathlib import Path
+import pathlib
 import numpy as np
 import pandas as pd
 import regex
 import contextlib
+import argparse
 
 from src.companies.processor import clean_company_type, normalize_company_name
 from src.nif_validation.validation import (
@@ -17,14 +18,6 @@ from src.nif_validation.validation import (
 )
 from src.utils.utils import fill_to_length, merge_orig_dataframes
 from src.utils.utils_parallelization import parallelize_function
-
-def nif_from_name(name):
-    """Searches whether the NIF is included in the name and separates it"""
-    name_spl = np.array(name.split())
-    valid = np.array([bool(validate_nif(s)) for s in name_spl])
-    new_name = " ".join(name_spl[~valid])
-    new_nif = Counter(name_spl[valid]).most_common()[0][0] if valid.any() else np.nan
-    return new_name, new_nif
 
 @contextlib.contextmanager
 def log_time(task_name: str):
@@ -195,7 +188,17 @@ def get_postal_zone(PostalZone):
     return postal_zones.most_common(1)[0][0].split(".")[0]
 
 def main():
-    dir_path = Path("data/metadata/")
+    
+    # Parse arguments, se ha configurado el path_archivos donde están los ficheros {outsiders,insiders,minors}
+    # y se ha configurado el download_path donde se guardará el fichero parquet con la información de las empresas.
+    parser = argparse.ArgumentParser(description="NP")
+    parser.add_argument("--path_archivos", type=pathlib.Path, default="/export/usuarios_ml4ds/cggamella/NP-Company-Process/data/metadata",
+                        required=False, help="Path to the save download data.")
+    parser.add_argument("--download_path", type=pathlib.Path, default=("/export/usuarios_ml4ds/cggamella/NP-Company-Process/data"),
+                        required=False, help="Path where the .parquet files will be downloaded.")
+    args = parser.parse_args()
+    
+    dir_path = args.path_archivos
     df_companies = merge_orig_dataframes(dir_metadata=dir_path)
     print(df_companies)
     # Use only those where all dimensions match
@@ -370,10 +373,16 @@ def main():
     }
     )
 
-    provisional_company_info.to_parquet("data/provisional_company_info.parquet")
-    utes.to_parquet("data/utes.parquet")
+    # Usa args.save_path para determinar dónde guardar los archivos parquet
+    provisional_company_info_path = args.download_path / "provisional_company_info.parquet"
+    utes_path = args.download_path / "utes.parquet"
+
+    # Guarda los archivos parquet en las rutas especificadas
+    provisional_company_info.to_parquet(provisional_company_info_path)
+    utes.to_parquet(utes_path)
 
 if __name__ == "__main__":
      main()
-    
-    
+     
+    # Ejecutar el script con el siguiente comando:
+    #python3 construir_tabla_companies.py --save_path /ruta/datos/minors,outsiders,insiders --download_path /ruta/a/tu/directorio/de/descarga
