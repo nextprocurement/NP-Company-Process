@@ -6,6 +6,7 @@ import pathlib
 import numpy as np
 import pandas as pd
 import regex
+import re
 import contextlib
 import argparse
 
@@ -335,16 +336,56 @@ def main():
         lambda x: x.split(",")[0] if not pd.isna(x) else None
     )
 
-    # Find UTEs based on name
-    ute_n = merged_global["UsedNames"].apply(
-        lambda x: bool(regex.search(r"\bu(\.)?t(\.)?e(\.)?\b", " ".join(x)))
-    )
-    # Find UTEs based on ID
-    ute_i = merged_global["ID"].apply(lambda x: x.startswith("u"))
+    # Ampliar la expresión regular precompilada para capturar "UTE" con variaciones, "union temporal empresas", y sus siglas
+    pattern = re.compile(r"\b(u(\.)?t(\.)?e|union temporal empresas|uniones temporales de empresas)\b", re.IGNORECASE)
 
-    utes = merged_global[ute_i | ute_n]
+    # Búsqueda de UTEs basada en nombres en la columna 'UsedNames'
+    ute_n = merged_global["UsedNames"].apply(lambda x: bool(pattern.search(" ".join([word.lower() for word in x]))))
+
+    # Búsqueda de UTEs basada en ID
+    ute_i = merged_global["ID"].str.startswith("u")
+
+    # Aplicar filtros basados en las columnas 'comp_type' y 'comp_desc' usando la expresión regular
+    ute_c_type = merged_global["comp_type"].apply(lambda x: bool(pattern.search(x.lower()) if pd.notnull(x) else False))
+    ute_c_desc = merged_global["comp_desc"].apply(lambda x: bool(pattern.search(x.lower()) if pd.notnull(x) else False))
+
+    # Combinar todos los filtros para encontrar UTEs basados en nombres, ID, comp_type, y comp_desc
+    utes_combined = merged_global[ute_n | ute_i | ute_c_type | ute_c_desc]
+
+    # Eliminar duplicados basándose en la columna 'ID', manteniendo la primera aparición
+    utes = utes_combined.drop_duplicates(subset="ID")
     
     merged_global['FullName'] = merged_global['UsedNames'].apply(lambda x: max(x, key=len))
+    
+    provisional_utes_info = utes.rename(
+        columns={
+            "ID": "NIF",
+            "id_tender": "id_tender",
+            "Name_proposed": "Name2",
+            "prov": "Province",
+            "NIF_type": "NIFtype",
+            "comp_type": "CompanyType",
+            "comp_desc": "CompanyDescription",
+        }
+    )[
+        [
+            "NIF",
+            "FullName",
+            "Name2",
+            "Province",
+            "NIFtype",
+            "CompanyType",
+            "CompanyDescription",
+            "id_tender",
+        ]
+    ]
+    
+    # Ahora, renombrar la columna 'Name2' a 'Name'
+    provisional_utes_info = provisional_utes_info.rename(
+        columns={
+            "Name2": "Name"  
+        }
+    )
 
     provisional_company_info = merged_global.rename(
     columns={
@@ -368,21 +409,25 @@ def main():
         "id_tender",
     ]
     ]
-    provisional_company_info = provisional_company_info.rename(columns={
-        "Name1": "Name"  # Renombrando Name1 a Name
-    }
+    
+    # Ahora, renombrar la columna 'Name1' a 'Name'
+    provisional_company_info = provisional_company_info.rename(
+        columns={
+            "Name1": "Name"  
+        }
     )
 
     # Usa args.save_path para determinar dónde guardar los archivos parquet
     provisional_company_info_path = args.download_path / "provisional_company_info.parquet"
-    utes_path = args.download_path / "utes.parquet"
+    utes_path = args.download_path / "provisional_utes_info.parquet"
 
     # Guarda los archivos parquet en las rutas especificadas
     provisional_company_info.to_parquet(provisional_company_info_path)
-    utes.to_parquet(utes_path)
+    provisional_utes_info.to_parquet(utes_path)
 
 if __name__ == "__main__":
      main()
+    
      
     # Ejecutar el script con el siguiente comando:
     #python3 construir_tabla_companies.py --save_path /ruta/datos/minors,outsiders,insiders --download_path /ruta/a/tu/directorio/de/descarga
