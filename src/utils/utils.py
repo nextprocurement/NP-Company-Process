@@ -100,13 +100,15 @@ def process_dataframe(df):
     # Clean columns
     df_companies = df_companies.applymap(fill_na, fill=[None])
     for c in df_companies.columns:
-        df_companies[c] = (
-            df_companies[c]
-            .apply(evaluate_cell)
-            .apply(
+        # Si la columna es 'id', se omite la conversión a minúsculas
+        if c == 'id':
+            df_companies[c] = df_companies[c].apply(evaluate_cell).apply(
+                lambda x: [None] if not x[0] else [str(el).strip() for el in x]
+            )
+        else:
+            df_companies[c] = df_companies[c].apply(evaluate_cell).apply(
                 lambda x: [None] if not x[0] else [str(el).strip().lower() for el in x]
             )
-        )
 
     return df_companies.rename(columns={"id": "id_tender"})
 

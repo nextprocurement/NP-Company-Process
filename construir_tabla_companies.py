@@ -193,7 +193,7 @@ def main():
     # Parse arguments, se ha configurado el path_archivos donde están los ficheros {outsiders,insiders,minors}
     # y se ha configurado el download_path donde se guardará el fichero parquet con la información de las empresas.
     parser = argparse.ArgumentParser(description="NP")
-    parser.add_argument("--path_archivos", type=pathlib.Path, default="/export/usuarios_ml4ds/cggamella/NP-Company-Process/data/metadata",
+    parser.add_argument("--path_archivos", type=pathlib.Path, default="/export/usuarios_ml4ds/cggamella/NP-Company-Process/data/DESCARGAS_ENTREGABLES",
                         required=False, help="Path to the save download data.")
     parser.add_argument("--download_path", type=pathlib.Path, default=("/export/usuarios_ml4ds/cggamella/NP-Company-Process/data"),
                         required=False, help="Path where the .parquet files will be downloaded.")
@@ -335,6 +335,9 @@ def main():
     merged_global["comp_type"] = merged_global["comp_type"].apply(
         lambda x: x.split(",")[0] if not pd.isna(x) else None
     )
+    
+    merged_global['FullName'] = merged_global['UsedNames'].apply(lambda x: max(x, key=len))
+
 
     # Ampliar la expresión regular precompilada para capturar "UTE" con variaciones, "union temporal empresas", y sus siglas
     pattern = re.compile(r"\b(u(\.)?t(\.)?e|union temporal empresas|uniones temporales de empresas)\b", re.IGNORECASE)
@@ -351,12 +354,10 @@ def main():
 
     # Combinar todos los filtros para encontrar UTEs basados en nombres, ID, comp_type, y comp_desc
     utes_combined = merged_global[ute_n | ute_i | ute_c_type | ute_c_desc]
-
+    
     # Eliminar duplicados basándose en la columna 'ID', manteniendo la primera aparición
     utes = utes_combined.drop_duplicates(subset="ID")
-    
-    merged_global['FullName'] = merged_global['UsedNames'].apply(lambda x: max(x, key=len))
-    
+        
     provisional_utes_info = utes.rename(
         columns={
             "ID": "NIF",
@@ -427,7 +428,6 @@ def main():
 
 if __name__ == "__main__":
      main()
-    
-     
+      
     # Ejecutar el script con el siguiente comando:
     #python3 construir_tabla_companies.py --save_path /ruta/datos/minors,outsiders,insiders --download_path /ruta/a/tu/directorio/de/descarga
