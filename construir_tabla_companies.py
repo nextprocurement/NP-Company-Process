@@ -338,13 +338,10 @@ def main():
     
     merged_global['FullName'] = merged_global['UsedNames'].apply(lambda x: max(x, key=len))
 
-
     # Ampliar la expresión regular precompilada para capturar "UTE" con variaciones, "union temporal empresas", y sus siglas
     pattern = re.compile(r"\b(u(\.)?t(\.)?e|union temporal empresas|uniones temporales de empresas)\b", re.IGNORECASE)
-
     # Búsqueda de UTEs basada en nombres en la columna 'UsedNames'
     ute_n = merged_global["UsedNames"].apply(lambda x: bool(pattern.search(" ".join([word.lower() for word in x]))))
-
     # Búsqueda de UTEs basada en ID
     ute_i = merged_global["ID"].str.startswith("u")
 
@@ -367,6 +364,7 @@ def main():
             "NIF_type": "NIFtype",
             "comp_type": "CompanyType",
             "comp_desc": "CompanyDescription",
+            "isPYME": "isPYME",
         }
     )[
         [
@@ -378,6 +376,7 @@ def main():
             "CompanyType",
             "CompanyDescription",
             "id_tender",
+            "isPYME": "isPYME",
         ]
     ]
     
@@ -397,6 +396,7 @@ def main():
         "NIF_type": "NIFtype",
         "comp_type": "CompanyType",
         "comp_desc": "CompanyDescription",
+        "isPYME": "isPYME",
     }
     )[
     [
@@ -408,6 +408,7 @@ def main():
         "CompanyType",
         "CompanyDescription",
         "id_tender",
+        "isPYME",
     ]
     ]
     
