@@ -159,12 +159,21 @@ def unify_repeated_col(df: pd.DataFrame, rep_col: str, un_col: str):
 
 def isPYME(SMEIndicators):
     # Evaluate if is SME based on the SMEAwardedIndicator appearances
-    # If True and False are present, return None
     # TODO: make a better decision
+    # Reemplaza todos los valores None por False
+    SMEIndicators = [False if x is None else x for x in SMEIndicators]
+    # Maneja el caso de una lista vacía
+    if not SMEIndicators:  
+        return False  
+    
     sme_counts = Counter(SMEIndicators)
     if True in sme_counts and False in sme_counts:
-        return None
-    return sme_counts.most_common(1)[0][0]
+        return False  # Retorna False cuando ambos, True y False, están presentes
+    
+    # Asegura que sme_counts no esté vacío y retorna el valor más común
+    if sme_counts:
+        return sme_counts.most_common(1)[0][0]
+    return False  # Retorna False si sme_counts está vacío después de reemplazar None por False
 
 def get_city_name(CityName):
     # Evaluate the city name based on the CityName appearances
@@ -376,7 +385,7 @@ def main():
             "CompanyType",
             "CompanyDescription",
             "id_tender",
-            "isPYME": "isPYME",
+            "isPYME",
         ]
     ]
     
