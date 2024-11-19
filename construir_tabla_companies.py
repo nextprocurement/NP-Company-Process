@@ -159,7 +159,6 @@ def unify_repeated_col(df: pd.DataFrame, rep_col: str, un_col: str):
 
 def isPYME(SMEIndicators):
     # Evaluate if is SME based on the SMEAwardedIndicator appearances
-    # TODO: make a better decision
     # Reemplaza todos los valores None por False
     SMEIndicators = [False if x is None else x for x in SMEIndicators]
     # Maneja el caso de una lista vacía
@@ -168,17 +167,16 @@ def isPYME(SMEIndicators):
     
     sme_counts = Counter(SMEIndicators)
     if True in sme_counts and False in sme_counts:
-        return False  # Retorna False cuando ambos, True y False, están presentes
+        return False 
     
     # Asegura que sme_counts no esté vacío y retorna el valor más común
     if sme_counts:
         return sme_counts.most_common(1)[0][0]
-    return False  # Retorna False si sme_counts está vacío después de reemplazar None por False
+    return False  
 
 def get_city_name(CityName):
     # Evaluate the city name based on the CityName appearances
     # Get most common excluding None
-    # TODO: make a better decision
     city_names = Counter(CityName)
     if None in city_names.keys():
         city_names.pop(None)
@@ -189,7 +187,6 @@ def get_city_name(CityName):
 def get_postal_zone(PostalZone):
     # Evaluate the postal zone based on the PostalZone appearances
     # Get most common excluding None
-    # TODO: make a better decision
     postal_zones = Counter(PostalZone)
     if None in postal_zones.keys():
         postal_zones.pop(None)
@@ -202,9 +199,9 @@ def main():
     # Parse arguments, se ha configurado el path_archivos donde están los ficheros {outsiders,insiders,minors}
     # y se ha configurado el download_path donde se guardará el fichero parquet con la información de las empresas.
     parser = argparse.ArgumentParser(description="NP")
-    parser.add_argument("--path_archivos", type=pathlib.Path, default="/export/usuarios_ml4ds/cggamella/NP-Company-Process/data/DESCARGAS_ENTREGABLES",
+    parser.add_argument("--path_archivos", type=pathlib.Path, default="/export/usuarios_ml4ds/cggamella/NP-Company-Process/data/DESCARGAS_MAYO",
                         required=False, help="Path to the save download data.")
-    parser.add_argument("--download_path", type=pathlib.Path, default=("/export/usuarios_ml4ds/cggamella/NP-Company-Process/data"),
+    parser.add_argument("--download_path", type=pathlib.Path, default="/export/usuarios_ml4ds/cggamella/NP-Company-Process/data",
                         required=False, help="Path where the .parquet files will be downloaded.")
     args = parser.parse_args()
     
@@ -212,8 +209,7 @@ def main():
     df_companies = merge_orig_dataframes(dir_metadata=dir_path)
     print(df_companies)
     # Use only those where all dimensions match
-    # (e.g. same number of companies and companies ids)
-    # and drop NAs
+    # (e.g. same number of companies and companies ids) and drop NAs
     df_companies = df_companies[
         df_companies[["ID", "Name"]]
         .applymap(lambda x: not pd.isna(x[0]))
@@ -440,4 +436,4 @@ if __name__ == "__main__":
      main()
       
     # Ejecutar el script con el siguiente comando:
-    #python3 construir_tabla_companies.py --save_path /ruta/datos/minors,outsiders,insiders --download_path /ruta/a/tu/directorio/de/descarga
+    #python3 construir_tabla_companies.py --path_archivos /ruta/datos/PLACE --download_path /ruta/a/tu/directorio/de/descarga
