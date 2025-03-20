@@ -523,7 +523,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--path_data", type=str,
                         help="Path to the data folder.",
-                        default="/export/usuarios_ml4ds/lbartolome/NextProcurement/NP-Company-Process/data")
+                        default="/export/usuarios_ml4ds/lbartolome/NextProcurement/NP-Company-Process/data/tablas_nuevas")
     parser.add_argument("--path_aux", type=str,
                         help="Path to the folder with auxiliary data.",
                         default="/export/usuarios_ml4ds/lbartolome/NextProcurement/NP-Company-Process/ute_resolver/metalists")

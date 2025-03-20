@@ -1,47 +1,45 @@
 # NP-COMPANY-PROCESS
 
-## Funcionalidad
+[![PyPI - License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/nextprocurement/NP-Company-Process/blob/main/LICENSE)
 
-Este proyecto proporciona notebooks para procesar e identificar licitaciones y empresas, así como para desambiguar las empresas que componen una Unión Temporal de Empresas (UTE).
+This project provides notebooks to process and identify tenders and companies, as well as to disambiguate the companies that compose an UTE.
 
-## Estructura de ficheros
+## File Structure
 
-### Datos
+### Data
 
-El directorio definido con los datos utilizados por la aplicación es por defecto: **_data_**. Dentro de ese directorio se encontrarán otros subdirectorios, principalmente metadata. Por ejemplo:
+The directory defined with the data used by the application is by default: **_data_**. Inside that directory, you'll find other subdirectories, mainly metadata. For example:
 
 ```bash
 data
-└───metadata
-    ├───insiders.parquet
-    ├───outsiders.parquet
-    └───minors.parquet
-└───company_info.parquet
-└───utes.parquet
+├── metadata
+│   ├── insiders.parquet
+│   ├── outsiders.parquet
+│   └── minors.parquet
+├── company_info.parquet
+└── utes.parquet
 ```
 
 ### app/src
 
-Contiene las diversas funcionalidades de la aplicación, divididas en companies, nif_validation y utils.
+It contains various functionalities of the application, divided into companies, nif_validation, and utils.
 
 #### companies
 
-Contiene funciones para identificar el tipo de empresa y unificar su escritura: se establece todo con sus siglas; por ejemplo: _sociedad limitada_, _soc. limitada_, _s. l._ se convierten en _s.l._. Permite también eliminarlo del texto si se desea.
+Contains functions to identify the type of company and unify their notation: everything is standardized to its acronym; for example: *sociedad limitada*, *soc. limitada*, *s. l.* become *s.l.*. It also allows for the removal of this from the text if desired.
 
 #### nif_validation
 
-Permite comprobar si los distintos identificadores (DNI, NIE y CIF) son correctos, así como identificar cuál se usa y obtener los datos en base a ello.\
-Se ha usado para crear estos métodos la información que aparecen en el BOE, principalmente a través de las referencias de <https://es.wikipedia.org/wiki/N%C3%BAmero_de_identificaci%C3%B3n_fiscal>
+Allows checking if the various identifiers (DNI, NIE, and CIF) are correct, as well as identifying which one is used and obtaining the data based on that.\
+The information that appears in the BOE has been used to create these methods, mainly through references from https://es.wikipedia.org/wiki/N%C3%BAmero_de_identificaci%C3%B3n_fiscal
 
 #### utils
 
-Aquí se encuentran funciones con diversas finalidades, como paralelizar o cargar datos.
-
-Por supuesto, aquí tienes el texto traducido al español manteniendo el formato markdown:
+Here you'll find functions with various purposes, such as parallelizing or loading data.
 
 ### ute_resolver
 
-Este directorio contiene los scripts que implementan la desambiguación de UTEs. El resultado de este proceso son dos tablas: ``utes_des.parquet`` y ``companies_des.parquet`` que se han generado en base a la información disponible en ``company_info.parquet`` y ``utes.parquet``. El primero contiene las empresas que componen cada UTE. Es importante señalar que puede haber casos de falsos positivos, donde las empresas aparecen erróneamente asociadas con una UTE, así como casos donde faltan empresas (por ejemplo, en una UTE compuesta por 3 empresas, solo se listan 2 en la tabla). Los falsos positivos son especialmente comunes cuando el nombre de una empresa es genérico (por ejemplo, 'José', 'María', etc.). La tabla ``companies_des.parquet`` contiene, para cada empresa, las UTEs en las que el algoritmo sugiere que han participado.
+This directory contains the scripts that implement the disambiguation of UTEs. The output of this process is two tables: ``utes_des.parquet`` and ``companies_des.parquet`` have been generated based on the information available in ``company_info.parquet`` and ``utes.parquet``. The former contains the companies composing each UTE. It's important to note that there may be cases of false positives, where companies erroneously appear associated with a UTE, as well as cases where companies are missing (e.g., in a UTE composed of 3 companies, only 2 are listed in the table). False positives are particularly common when a company name is generic (e.g., 'Jose', 'Maria', etc.). The ``companies_des.parquet`` table contains, for each company, the UTEs in which the algorithm suggests they have participated.
 
 ```bash
 ute_resolver
@@ -53,73 +51,83 @@ ute_resolver
 │   └── nombres.parquet
 ├── calculate_coverage.py
 ├── disambiguate_utes.py
-└── generate_stops.py
-├── test_zaragoza.ipynb
+├── generate_stops.py
+└── test_zaragoza.ipynb
 ```
 
-El script ``disambiguate_utes.py`` es el encargado de la generación de los archivos ``utes_des.parquet`` y ``companies_des.parquet`` con los resultados de la desambiguación. Ofrece dos enfoques distintos para la desambiguación de UTEs:
+The script ``disambiguate_utes.py`` is the one in charge of the generation of the ``utes_des.parquet`` and ``companies_des.parquet`` files with the disambiguation results. It offers two distinct approaches for disambiguating UTEs:
 
-- **Emparejamiento difuso basado en reglas:** El primer enfoque utiliza un conjunto de reglas predefinidas para segmentar los nombres de las UTEs y las empresas. Utilizando la biblioteca fuzzywuzzy, identifica UTEs que se parecen estrechamente a los componentes segmentados de los nombres de las empresas.
+- **Rule-based Fuzzy Matching:** The first approach employs a set of predefined rules to segment the names of UTEs and companies. Utilizing the fuzzywuzzy library, it identifies UTEs that closely resemble the segmented components of company names.
 
-- **Emparejamiento difuso de subcadenas recursivas:** El segundo enfoque combina búsquedas de subcadenas recursivas dentro de los nombres de las UTEs con segmentación basada en reglas de los nombres de las UTEs y las empresas. Luego identifica coincidencias parciales con separación de puntuación, después de filtrar términos irrelevantes. Estas exclusiones incluyen:
-  - Palabras que contienen menos de tres caracteres.
-  - Valores numéricos.
-  - Palabras comunes en español y catalán obtenidas de ``es.txt`` y ``catalan.txt``.
-  - Apellidos y nombres españoles frecuentes extraídos de los archivos ``apellidos.parquet`` y ``nombres.parquet``.
-  - Términos comunes derivados de las divisiones de nombres de empresas con frecuencias por encima del percentil 95, obtenidos de ``filtered_elements.txt.`` Esta lista se genera utilizando el script generate_stops.py.
+- **Recursive Substring Fuzzy Matching:** The second approach combines recursive substring searches within UTE names with rule-based segmentation of UTE and company names. It then identifies partial matches with punctuation separation, after filtering out irrelevant terms. These exclusions include:
+  - Words containing fewer than three characters.
+  - Numerical values.
+  - Common Spanish and Catalan words sourced from ``es.txt`` and ``catalan.txt``.
+  - Frequently occurring Spanish surnames and given names extracted from ``apellidos.parquet`` and ``nombres.parquet`` files.
+  - Common terms derived from the splits of company names with frequencies above the 95th percentile, obtained from ``filtered_elements.txt.`` This list is generated using the generate_stops.py script.
 
-Para una computación eficiente, este método requiere el uso de Spark.
-Tras la desambiguación de las UTEs, cada nombre de empresa se asocia con una lista de UTEs en las que dicha empresa ha participado. Además, el script genera un nuevo dataframe que contiene para cada UTE, sus respectivas empresas asociadas.
+For efficient computation, this method requires the use of Spark.
+Upon disambiguating UTEs, each company name corresponds to a list of associated UTEs. The script generates a new DataFrame containing UTEs and their respective associated companies (integrantes).
 
-El método del segundo enfoque ofrece una cobertura más amplia en comparación con el primero. A pesar de su alcance más amplio, puede generar falsos positivos.
+The second approach method offers a larger coverage compared to the first approach. Despite its broader scope, it may generate false positives.
 
 ### Notebooks
 
 #### match_tender.ipynb
 
-Este notebook hace un emparejamiento entre las licitaciones de PLACE y las de GENCAT en este caso. El paso a paso del notebook es el siguiente:
+This notebook matches tenders from PLACE and GENCAT, in this case. The step-by-step of the notebook is as follows:
 
-1. Cargar los datos de PLACE y GENCAT.
-2. Funciones para hacer una limpieza de los dataframes y seleccionar las columnas relevantes.
-3. Compilar los datos de PLACE
+1. Load data from PLACE and GENCAT.
+2. Functions for cleaning the dataframes and selecting relevant columns.
+3. Collect PLACE data
     - **Get relevant data**
-        - Unificar columnas
-        - Separar CPVs
-        - Limpiar columnas
-        - Crear una columna `cpv_div` para usar en el merge
+        - Unify columns
+        - Split CPVs
+        - Clean columns
+        - Create a `cpv_div` column for use in the merge
     - **Get data from cat**
-        - Obtener potenciales datos de Cataluña
-        - Juntarlos por ID y quedarnos únicamente con los que tienen el mismo título
-4. Repetir el paso anterior para los datos de GENCAT
-5. Hacer una asociación por ID y utilizar solamente ["id_orig", "title", "cpv_div", "index_agg", "index_cat"], donde index son los índices de los dataframes limpios obtenidos en el punto anterior (`use_tend_agg` y `use_tend_cat`). Se hace un counter de títulos y cpvs para quedarnos más tarde con el más común.
-6. Repetir la asociación pero utilizando las columnas de `title` y `cpv_div`.
-7. Unificar ambos dataframes obteniendo un contador del resto de elementos. Más adelante, este contador servirá para obtener los datos más probables.
-8. A partir de ahí ya se pueden hacer búsquedas en un dataframe u otro, rellenar datos, etc.
+        - Obtain potential data from Catalonia
+        - Combine them by ID and only keep those with the same title
+4. Repeat the previous step for GENCAT data
+5. Make an association by ID and use only ["id_orig", "title", "cpv_div", "index_agg", "index_cat"], where index are the indices of the cleaned dataframes obtained in the previous point (`use_tend_agg` and `use_tend_cat`). A counter is made for titles and cpvs to later keep the most common one.
+6. Repeat the association but using the columns of `title` and `cpv_div`.
+7. Combine both dataframes obtaining a counter of the remaining elements. Later on, this counter will be used to obtain the most probable data.
+8. From this point, you can search in one dataframe or another, fill in data, etc.
 
 #### match_companies.ipynb
 
-Este notebook hace un emparejamiento entre empresas. El paso a paso del notebook es el siguiente:
+This notebook matches companies. The step-by-step of the notebook is as follows:
 
-1. Imports y funciones para separar el NIF cuando va incluido en el texto y para limpiar el dataframe.
-2. Juntar las distintas fuentes (minors, insiders, outsiders)
-3. Filtrar para usar únicamente las empresas que contienen nombre y NIF (se descartan los NaNs)
-4. Hay una sección con las empresas de otros países que se puede explorar
-5. Limpieza de información (validar NIF, normalizar textos, etc.)
-6. Juntar por ID y nombre y determinar si es PYME
-7. Separar empresas que tienen ID y nombres únicos
-8. Los valores únicos se emplean directamente. En los valores que están repetidos se asigna un nombre a cada identificador en función de las veces que este aparezca
-9. Se concatenean ambos dataframes (únicos y no únicos)
-10. Se propone un nombre de todos los que aparecen (a revisar)
-11. Expandir la información a partir de los datos:
-    - Es PYME
-    - Ciudad y código postal
-    - Provincia y tipo de empresa
-12. Búsqueda de UTEs (se puede añadir directamente como columna)
-13. Cargar las empresas de Zaragoza y hacer la misma limpieza
-14. Vista general:
-    - Ver qué nombres e IDs están repetidos
-    - Buscar en las empresas de Zaragoza en las que teníamos antes (por ID y por nombre)
-    - Empresas que no tienen NIF e intentar rellenar con los NIFs que tenemos
-    - Separación entre valores (ID-Name) únicos y repetidos.
+1. Imports and functions to separate the NIF when included in the text and to clean the dataframe.
+2. Combine the different sources (minors, insiders, outsiders)
+3. Filter to only use companies that contain a name and NIF (NaNs are discarded)
+4. There's a section with foreign companies that can be explored
+5. Data cleaning (validate NIF, standardize texts, etc.)
+6. Combine by ID and name and determine if it's an SME
+7. Separate companies that have unique ID and names
+8. Unique values are used directly. In repeated values, a name is assigned to each identifier based on the times it appears
+9. Both dataframes (unique and non-unique) are concatenated
+10. A name is proposed from all that appear (to be reviewed)
+11. Expand information based on the data:
+    - Is an SME
+    - City and postal code
+    - Province and type of company
+12. Search for UTEs (can be added directly as a column)
+13. Load companies from Zaragoza and do the same cleaning
+14. Overview:
+    - See which names and IDs are repeated
+    - Search in Zaragoza's companies from those we had before (by ID and name)
+    - Companies without NIF and try to fill them with the NIFs we have
+    - Separation between unique and repeated values (ID-Name).
 
-[![](https://img.shields.io/badge/lang-en-red)](README.en.md)
+---
+
+## Acknowledgements
+
+This work has received funding from the NextProcurement European Action (grant agreement INEA/CEF/ICT/A2020/2373713-Action 2020-ES-IA-0255).
+
+<p align="center">
+  <img src="static/Images/eu-logo.svg" alt="EU Logo" height=100 width=200>
+  <img src="static/Images/nextprocurement-logo.png" alt="Next Procurement Logo" height=100 width=200>
+</p>
+
