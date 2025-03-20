@@ -22,7 +22,7 @@ data
 
 ### app/src
 
-It contains various functionalities of the application, divided into companies, nif_validation, and utils.
+It contains various functionalities of the application, divided into companies, nif_validation, ute_resolver, and utils.
 
 #### companies
 
@@ -41,21 +41,7 @@ Here you'll find functions with various purposes, such as parallelizing or loadi
 
 This directory contains the scripts that implement the disambiguation of UTEs. The output of this process is two tables: ``utes_des.parquet`` and ``companies_des.parquet`` have been generated based on the information available in ``company_info.parquet`` and ``utes.parquet``. The former contains the companies composing each UTE. It's important to note that there may be cases of false positives, where companies erroneously appear associated with a UTE, as well as cases where companies are missing (e.g., in a UTE composed of 3 companies, only 2 are listed in the table). False positives are particularly common when a company name is generic (e.g., 'Jose', 'Maria', etc.). The ``companies_des.parquet`` table contains, for each company, the UTEs in which the algorithm suggests they have participated.
 
-```bash
-ute_resolver
-├── metalists
-│   ├── apellidos.parquet
-│   ├── catalan.txt
-│   ├── es.txt
-│   ├── filtered_elements.txt
-│   └── nombres.parquet
-├── calculate_coverage.py
-├── disambiguate_utes.py
-├── generate_stops.py
-└── test_zaragoza.ipynb
-```
-
-The script ``disambiguate_utes.py`` is the one in charge of the generation of the ``utes_des.parquet`` and ``companies_des.parquet`` files with the disambiguation results. It offers two distinct approaches for disambiguating UTEs:
+Two distinct approaches for disambiguating UTEs are offered:
 
 - **Rule-based Fuzzy Matching:** The first approach employs a set of predefined rules to segment the names of UTEs and companies. Utilizing the fuzzywuzzy library, it identifies UTEs that closely resemble the segmented components of company names.
 
@@ -71,54 +57,45 @@ Upon disambiguating UTEs, each company name corresponds to a list of associated 
 
 The second approach method offers a larger coverage compared to the first approach. Despite its broader scope, it may generate false positives.
 
-### Notebooks
+---
 
-#### match_tender.ipynb
+### Main Scripts
 
-This notebook matches tenders from PLACE and GENCAT, in this case. The step-by-step of the notebook is as follows:
+#### 1) `calculate_coverage.py`
+This script calculates the coverage of the UTEs found by two different methods. Coverage is determined as the percentage of UTEs found by each method relative to the total number of UTEs in the dataset. It also provides examples of UTEs detected by each method.
 
-1. Load data from PLACE and GENCAT.
-2. Functions for cleaning the dataframes and selecting relevant columns.
-3. Collect PLACE data
-    - **Get relevant data**
-        - Unify columns
-        - Split CPVs
-        - Clean columns
-        - Create a `cpv_div` column for use in the merge
-    - **Get data from cat**
-        - Obtain potential data from Catalonia
-        - Combine them by ID and only keep those with the same title
-4. Repeat the previous step for GENCAT data
-5. Make an association by ID and use only ["id_orig", "title", "cpv_div", "index_agg", "index_cat"], where index are the indices of the cleaned dataframes obtained in the previous point (`use_tend_agg` and `use_tend_cat`). A counter is made for titles and cpvs to later keep the most common one.
-6. Repeat the association but using the columns of `title` and `cpv_div`.
-7. Combine both dataframes obtaining a counter of the remaining elements. Later on, this counter will be used to obtain the most probable data.
-8. From this point, you can search in one dataframe or another, fill in data, etc.
+**Usage:**
+```bash
+python calculate_coverage.py --path_data <path_to_data> --compare1 df_not_in_utes_approach1.parquet --compare2 companies_des.parquet --utes utes.parquet --nshow 10
+```
+- `--path_data`: Path to the data folder (default: `data`).
+- `--compare1`: First file to compare (default: `df_not_in_utes_approach1.parquet`).
+- `--compare2`: Second file to compare (default: `companies_des.parquet`).
+- `--utes`: File containing the UTEs (default: `utes.parquet`).
+- `--nshow`: Number of examples to display (default: `10`).
 
-#### match_companies.ipynb
+#### 2) `create_company_table.py`
+This script processes company data, cleans company names, validates NIFs, and generates a unified company table. It standardizes company identifiers and helps with company name normalization.
 
-This notebook matches companies. The step-by-step of the notebook is as follows:
+**Usage:**
+```bash
+python create_company_table.py --path_archivos <path_to_data> --download_path <output_path>
+```
+- `--path_archivos`: Path to input data files (default: `/export/usuarios_ml4ds/cggamella/NP-Company-Process/data/DESCARGAS_MAYO`).
+- `--download_path`: Output directory for processed company tables (default: `/export/usuarios_ml4ds/cggamella/NP-Company-Process/data`).
 
-1. Imports and functions to separate the NIF when included in the text and to clean the dataframe.
-2. Combine the different sources (minors, insiders, outsiders)
-3. Filter to only use companies that contain a name and NIF (NaNs are discarded)
-4. There's a section with foreign companies that can be explored
-5. Data cleaning (validate NIF, standardize texts, etc.)
-6. Combine by ID and name and determine if it's an SME
-7. Separate companies that have unique ID and names
-8. Unique values are used directly. In repeated values, a name is assigned to each identifier based on the times it appears
-9. Both dataframes (unique and non-unique) are concatenated
-10. A name is proposed from all that appear (to be reviewed)
-11. Expand information based on the data:
-    - Is an SME
-    - City and postal code
-    - Province and type of company
-12. Search for UTEs (can be added directly as a column)
-13. Load companies from Zaragoza and do the same cleaning
-14. Overview:
-    - See which names and IDs are repeated
-    - Search in Zaragoza's companies from those we had before (by ID and name)
-    - Companies without NIF and try to fill them with the NIFs we have
-    - Separation between unique and repeated values (ID-Name).
+#### 3) `disambiguate_utes.py`
+This script offers the two different approaches for UTE disambiguation.
+
+**Usage:**
+```bash
+python disambiguate_utes.py --path_data <path_to_data> --path_aux <auxiliary_data_path> --approach <1_or_2>
+```
+- `--path_data`: Path to the data folder.
+- `--path_aux`: Path to auxiliary datasets (e.g., name frequency lists).
+- `--approach`: Approach to use (`1` for Rule-based Fuzzy Matching, `2` for Recursive Substring Matching).
+
+> **Note:** Approach 2 requires **Spark** for efficient computation.
 
 ---
 

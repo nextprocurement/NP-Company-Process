@@ -39,7 +39,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--path_data", type=str,
                         help="Path to the data folder.",
-                        default="../data")
+                        default="data")
     parser.add_argument("--compare1", type=str,
                         help="Name of the first file to compare.", default="df_not_in_utes_approach1.parquet")
     parser.add_argument("--compare2", type=str,
