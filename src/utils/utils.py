@@ -16,6 +16,15 @@ def fill_to_length(iterable, l):
 def unify_colname(col):
     return ".".join([el for el in col if el])
 
+def date_format(fecha_str):
+    try:
+        # Intentar parsear la fecha original a objeto datetime con el formato esperado
+        fecha_dt = datetime.strptime(fecha_str, '%d/%m/%Y %H:%M:%S')
+        # Formatear la fecha al estilo ISO 8601 con zona horaria +00:00
+        fecha_formateada = fecha_dt.strftime('%Y-%m-%d %H:%M:%S+00:00')
+        return fecha_formateada
+    except ValueError:
+        return fecha_str
 
 def suggest_value(elements):
     """
@@ -100,13 +109,15 @@ def process_dataframe(df):
     # Clean columns
     df_companies = df_companies.applymap(fill_na, fill=[None])
     for c in df_companies.columns:
-        df_companies[c] = (
-            df_companies[c]
-            .apply(evaluate_cell)
-            .apply(
+        # Si la columna es 'id', se omite la conversión a minúsculas
+        if c == 'id':
+            df_companies[c] = df_companies[c].apply(evaluate_cell).apply(
+                lambda x: [None] if not x[0] else [str(el).strip() for el in x]
+            )
+        else:
+            df_companies[c] = df_companies[c].apply(evaluate_cell).apply(
                 lambda x: [None] if not x[0] else [str(el).strip().lower() for el in x]
             )
-        )
 
     return df_companies.rename(columns={"id": "id_tender"})
 

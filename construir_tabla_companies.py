@@ -2,11 +2,13 @@ import json
 import time
 from collections import Counter
 from itertools import chain
-from pathlib import Path
+import pathlib
 import numpy as np
 import pandas as pd
 import regex
+import re
 import contextlib
+import argparse
 
 from src.companies.processor import clean_company_type, normalize_company_name
 from src.nif_validation.validation import (
@@ -17,14 +19,6 @@ from src.nif_validation.validation import (
 )
 from src.utils.utils import fill_to_length, merge_orig_dataframes
 from src.utils.utils_parallelization import parallelize_function
-
-def nif_from_name(name):
-    """Searches whether the NIF is included in the name and separates it"""
-    name_spl = np.array(name.split())
-    valid = np.array([bool(validate_nif(s)) for s in name_spl])
-    new_name = " ".join(name_spl[~valid])
-    new_nif = Counter(name_spl[valid]).most_common()[0][0] if valid.any() else np.nan
-    return new_name, new_nif
 
 @contextlib.contextmanager
 def log_time(task_name: str):
@@ -165,17 +159,24 @@ def unify_repeated_col(df: pd.DataFrame, rep_col: str, un_col: str):
 
 def isPYME(SMEIndicators):
     # Evaluate if is SME based on the SMEAwardedIndicator appearances
-    # If True and False are present, return None
-    # TODO: make a better decision
+    # Reemplaza todos los valores None por False
+    SMEIndicators = [False if x is None else x for x in SMEIndicators]
+    # Maneja el caso de una lista vacía
+    if not SMEIndicators:  
+        return False  
+    
     sme_counts = Counter(SMEIndicators)
     if True in sme_counts and False in sme_counts:
-        return None
-    return sme_counts.most_common(1)[0][0]
+        return False 
+    
+    # Asegura que sme_counts no esté vacío y retorna el valor más común
+    if sme_counts:
+        return sme_counts.most_common(1)[0][0]
+    return False  
 
 def get_city_name(CityName):
     # Evaluate the city name based on the CityName appearances
     # Get most common excluding None
-    # TODO: make a better decision
     city_names = Counter(CityName)
     if None in city_names.keys():
         city_names.pop(None)
@@ -186,7 +187,6 @@ def get_city_name(CityName):
 def get_postal_zone(PostalZone):
     # Evaluate the postal zone based on the PostalZone appearances
     # Get most common excluding None
-    # TODO: make a better decision
     postal_zones = Counter(PostalZone)
     if None in postal_zones.keys():
         postal_zones.pop(None)
@@ -195,12 +195,21 @@ def get_postal_zone(PostalZone):
     return postal_zones.most_common(1)[0][0].split(".")[0]
 
 def main():
-    dir_path = Path("data/metadata/")
+    
+    # Parse arguments, se ha configurado el path_archivos donde están los ficheros {outsiders,insiders,minors}
+    # y se ha configurado el download_path donde se guardará el fichero parquet con la información de las empresas.
+    parser = argparse.ArgumentParser(description="NP")
+    parser.add_argument("--path_archivos", type=pathlib.Path, default="/export/usuarios_ml4ds/cggamella/NP-Company-Process/data/DESCARGAS_MAYO",
+                        required=False, help="Path to the save download data.")
+    parser.add_argument("--download_path", type=pathlib.Path, default="/export/usuarios_ml4ds/cggamella/NP-Company-Process/data",
+                        required=False, help="Path where the .parquet files will be downloaded.")
+    args = parser.parse_args()
+    
+    dir_path = args.path_archivos
     df_companies = merge_orig_dataframes(dir_metadata=dir_path)
     print(df_companies)
     # Use only those where all dimensions match
-    # (e.g. same number of companies and companies ids)
-    # and drop NAs
+    # (e.g. same number of companies and companies ids) and drop NAs
     df_companies = df_companies[
         df_companies[["ID", "Name"]]
         .applymap(lambda x: not pd.isna(x[0]))
@@ -331,17 +340,57 @@ def main():
     merged_global["comp_type"] = merged_global["comp_type"].apply(
         lambda x: x.split(",")[0] if not pd.isna(x) else None
     )
-
-    # Find UTEs based on name
-    ute_n = merged_global["UsedNames"].apply(
-        lambda x: bool(regex.search(r"\bu(\.)?t(\.)?e(\.)?\b", " ".join(x)))
-    )
-    # Find UTEs based on ID
-    ute_i = merged_global["ID"].apply(lambda x: x.startswith("u"))
-
-    utes = merged_global[ute_i | ute_n]
     
     merged_global['FullName'] = merged_global['UsedNames'].apply(lambda x: max(x, key=len))
+
+    # Ampliar la expresión regular precompilada para capturar "UTE" con variaciones, "union temporal empresas", y sus siglas
+    pattern = re.compile(r"\b(u(\.)?t(\.)?e|union temporal empresas|uniones temporales de empresas)\b", re.IGNORECASE)
+    # Búsqueda de UTEs basada en nombres en la columna 'UsedNames'
+    ute_n = merged_global["UsedNames"].apply(lambda x: bool(pattern.search(" ".join([word.lower() for word in x]))))
+    # Búsqueda de UTEs basada en ID
+    ute_i = merged_global["ID"].str.startswith("u")
+
+    # Aplicar filtros basados en las columnas 'comp_type' y 'comp_desc' usando la expresión regular
+    ute_c_type = merged_global["comp_type"].apply(lambda x: bool(pattern.search(x.lower()) if pd.notnull(x) else False))
+    ute_c_desc = merged_global["comp_desc"].apply(lambda x: bool(pattern.search(x.lower()) if pd.notnull(x) else False))
+
+    # Combinar todos los filtros para encontrar UTEs basados en nombres, ID, comp_type, y comp_desc
+    utes_combined = merged_global[ute_n | ute_i | ute_c_type | ute_c_desc]
+    
+    # Eliminar duplicados basándose en la columna 'ID', manteniendo la primera aparición
+    utes = utes_combined.drop_duplicates(subset="ID")
+        
+    provisional_utes_info = utes.rename(
+        columns={
+            "ID": "NIF",
+            "id_tender": "id_tender",
+            "Name_proposed": "Name2",
+            "prov": "Province",
+            "NIF_type": "NIFtype",
+            "comp_type": "CompanyType",
+            "comp_desc": "CompanyDescription",
+            "isPYME": "isPYME",
+        }
+    )[
+        [
+            "NIF",
+            "FullName",
+            "Name2",
+            "Province",
+            "NIFtype",
+            "CompanyType",
+            "CompanyDescription",
+            "id_tender",
+            "isPYME",
+        ]
+    ]
+    
+    # Ahora, renombrar la columna 'Name2' a 'Name'
+    provisional_utes_info = provisional_utes_info.rename(
+        columns={
+            "Name2": "Name"  
+        }
+    )
 
     provisional_company_info = merged_global.rename(
     columns={
@@ -352,6 +401,7 @@ def main():
         "NIF_type": "NIFtype",
         "comp_type": "CompanyType",
         "comp_desc": "CompanyDescription",
+        "isPYME": "isPYME",
     }
     )[
     [
@@ -363,17 +413,27 @@ def main():
         "CompanyType",
         "CompanyDescription",
         "id_tender",
+        "isPYME",
     ]
     ]
-    provisional_company_info = provisional_company_info.rename(columns={
-        "Name1": "Name"  # Renombrando Name1 a Name
-    }
+    
+    # Ahora, renombrar la columna 'Name1' a 'Name'
+    provisional_company_info = provisional_company_info.rename(
+        columns={
+            "Name1": "Name"  
+        }
     )
 
-    provisional_company_info.to_parquet("data/provisional_company_info.parquet")
-    utes.to_parquet("data/utes.parquet")
+    # Usa args.save_path para determinar dónde guardar los archivos parquet
+    provisional_company_info_path = args.download_path / "provisional_company_info.parquet"
+    utes_path = args.download_path / "provisional_utes_info.parquet"
+
+    # Guarda los archivos parquet en las rutas especificadas
+    provisional_company_info.to_parquet(provisional_company_info_path)
+    provisional_utes_info.to_parquet(utes_path)
 
 if __name__ == "__main__":
      main()
-    
-    
+      
+    # Ejecutar el script con el siguiente comando:
+    #python3 construir_tabla_companies.py --path_archivos /ruta/datos/PLACE --download_path /ruta/a/tu/directorio/de/descarga

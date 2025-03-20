@@ -6,8 +6,19 @@
 # ignore directories
 /data/
 __pycache__/
+.DS_Store
+venv/
+
 
 # data directories
 data
 
 .ipynb_checkpoints
+
+PLACE_datos_GENCAT_27marzo.csv
+TABLA_COMPANIES.csv
+Untitled.ipynb
+datos_cruce_gencat_place.csv
+detectar_idioma.ipynb
+df_gencat_id_unico.csv
+match_tender_new_version.ipynb
